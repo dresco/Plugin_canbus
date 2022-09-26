@@ -1,0 +1,70 @@
+/*
+
+  my_plugin.c - CAN bus RX & TX example
+
+  Part of grblHAL
+
+  Public domain.
+
+*/
+
+#include <string.h>
+
+#include "driver.h"
+#include "grbl/protocol.h"
+#include <canbus/canbus.h>
+
+static dequeue_rx_ptr dequeue_rx;
+static canbus_message_t tx_message;
+
+static on_report_options_ptr on_report_options;
+static on_realtime_report_ptr on_realtime_report;
+
+bool myplugin_dequeue_rx (canbus_message_t message)
+{
+    printf("myplugin_dequeue_rx(), CAN message id:%lx\n", message.id);
+
+    /* Call the next rx handler in the chain */
+    if (dequeue_rx)
+        dequeue_rx(message);
+
+    return(0);
+}
+
+static void myplugin_tx_test(void)
+{
+    tx_message.id = 0x446;
+    tx_message.len = 8;
+    memcpy(tx_message.data, "DEADBEEF", tx_message.len);
+
+    canbus_queue_tx(tx_message);
+}
+
+static void myplugin_report (stream_write_ptr stream_write, report_tracking_flags_t report)
+{
+    if(on_realtime_report)
+        on_realtime_report(stream_write, report);
+
+    /* Send a test message over CAN */
+    myplugin_tx_test();
+}
+
+static void onReportOptions (bool newopt)
+{
+    on_report_options(newopt);  // Call previous function in the chain.
+
+    if(!newopt)                 // Add info about us to the $I report.
+        hal.stream.write("[PLUGIN:MY PLUGIN - CAN bus example]" ASCII_EOL);
+}
+
+void my_plugin_init (void)
+{
+    on_report_options = grbl.on_report_options;     // Add our plugin to to the options report chain
+    grbl.on_report_options = onReportOptions;       // to tell the user we are active.
+
+    on_realtime_report = grbl.on_realtime_report;
+    grbl.on_realtime_report = myplugin_report;
+
+    dequeue_rx = canbus.dequeue_rx;
+    canbus.dequeue_rx = myplugin_dequeue_rx;
+}
