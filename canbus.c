@@ -81,11 +81,17 @@ uint8_t canbus_queue_rx(canbus_message_t message)
     return (queue_put_msg(&rx_buffer, message));
 }
 
+static const setting_group_detail_t canbus_groups [] = {
+    { Group_Root, Group_CANbus, "CAN bus"}
+};
+
 static const setting_detail_t canbus_setting_detail[] = {
     { Setting_CANbus_BaudRate, Group_CANbus, "CAN bus baud rate", NULL, Format_RadioButtons, "125000,250000,500000,1000000", NULL, NULL, Setting_NonCoreFn, canbus_set_baud, canbus_get_baud, NULL },
 };
 
 static setting_details_t setting_details = {
+    .groups = canbus_groups,
+    .n_groups = sizeof(canbus_groups) / sizeof(setting_group_detail_t),
     .settings = canbus_setting_detail,
     .n_settings = sizeof(canbus_setting_detail) / sizeof(setting_detail_t),
     .save = canbus_settings_save,
